@@ -19,6 +19,10 @@ const algorithmSlugs: Record<Algorithm, string> = {
   quick: "quick-sort",
   counting: "counting-sort",
 };
+const appBase = import.meta.env.BASE_URL;
+const homePath = () => appBase;
+const isHomePath = (pathname: string) =>
+  pathname === "/" || pathname === appBase || pathname === appBase.slice(0, -1);
 
 function algorithmFromPath(pathname: string): Algorithm {
   const match = Object.entries(algorithmSlugs).find(([, slug]) =>
@@ -333,7 +337,7 @@ function trace(input: number[], algorithm: Algorithm): Step[] {
 
 export default function App() {
   const [view, setView] = useState<"home" | "lab">(() =>
-      window.location.pathname === "/" ? "home" : "lab",
+      isHomePath(window.location.pathname) ? "home" : "lab",
     ),
     [lang, setLang] = useState<Lang>("en"),
     [algorithm, setAlgorithm] = useState<Algorithm>(() =>
@@ -351,8 +355,8 @@ export default function App() {
     [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = (next: "home" | "lab", selectedAlgorithm = algorithm) => {
     const path = next === "home"
-      ? "/"
-      : `/visualize/sorting/${algorithmSlugs[selectedAlgorithm]}`;
+      ? homePath()
+      : `${appBase}visualize/sorting/${algorithmSlugs[selectedAlgorithm]}`;
     window.history.pushState({ view: next, algorithm: selectedAlgorithm }, "", path);
     if (next === "lab") setAlgorithm(selectedAlgorithm);
     setLeaving(true);
@@ -363,7 +367,7 @@ export default function App() {
   };
   useEffect(() => {
     const onPopState = () => {
-      const nextView = window.location.pathname === "/" ? "home" : "lab";
+      const nextView = isHomePath(window.location.pathname) ? "home" : "lab";
       setAlgorithm(algorithmFromPath(window.location.pathname));
       setView(nextView);
       setDrawerOpen(false);
@@ -449,7 +453,7 @@ export default function App() {
             window.history.pushState(
               { view: "lab", algorithm: id },
               "",
-              `/visualize/sorting/${algorithmSlugs[id]}`,
+              `${appBase}visualize/sorting/${algorithmSlugs[id]}`,
             );
             setDrawerOpen(false);
           }}
@@ -517,9 +521,9 @@ export default function App() {
                 ← {t.home}
               </button>
               <div className="lab-breadcrumb" aria-label="Breadcrumb">
-                <a href="/">{t.visualizations}</a>
+                <a href={homePath()}>{t.visualizations}</a>
                 <b>/</b>
-                <a href="/visualize/sorting/counting-sort">{t.sorting}</a>
+                <a href={`${appBase}visualize/sorting`}>{t.sorting}</a>
                 <b>/</b>
                 <strong>{title(algorithm)}</strong>
               </div>
