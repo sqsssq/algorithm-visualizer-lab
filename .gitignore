@@ -1,0 +1,10 @@
+# Local initialization config copied from config/init-project.example.env.
+init-project.env
+
+# Local environment and scratch files.
+.env
+.DS_Store
+
+# Installed dependencies and generated build output.
+node_modules/
+dist/
