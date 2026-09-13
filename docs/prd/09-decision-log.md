@@ -37,3 +37,10 @@ Use React, TypeScript, Vite, and Motion for the first implementation. Keep algor
 - Keep Algorithm Visualizer Lab's own algorithms, bilingual behavior, trace model, and visual tokens; do not copy Coddy branding or page content.
 - Preserve stable identities for array items so swaps animate as horizontal position changes.
 - Add an explicit return-to-home button and a draggable trace progress bar alongside playback controls.
+
+### 2026-09-13: Expand sorting coverage and presentation
+
+- Add selection, merge, heap, radix, bucket, and shell sort to the learning library.
+- Keep operation highlights data-driven so comparisons, swaps, shifts, placements, pivots, and bucket operations can highlight different numbers of items.
+- Give Counting Sort a visible frequency-bucket panel in addition to the array visualization.
+- Support both dark and light themes while preserving semantic operation colors.

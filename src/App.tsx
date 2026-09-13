@@ -1,7 +1,9 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 
-type Algorithm = "bubble" | "insertion" | "quick" | "counting";
+type Algorithm =
+  | "bubble" | "insertion" | "selection" | "quick" | "merge"
+  | "heap" | "counting" | "radix" | "bucket" | "shell";
 type Op = "ready" | "compare" | "swap" | "shift" | "place" | "complete";
 type Step = {
   values: number[];
@@ -10,6 +12,7 @@ type Step = {
   op: Op;
   line: number;
   note: string;
+  aux?: number[];
 };
 type Lang = "en" | "zh";
 
@@ -18,6 +21,12 @@ const algorithmSlugs: Record<Algorithm, string> = {
   insertion: "insertion-sort",
   quick: "quick-sort",
   counting: "counting-sort",
+  selection: "selection-sort",
+  merge: "merge-sort",
+  heap: "heap-sort",
+  radix: "radix-sort",
+  bucket: "bucket-sort",
+  shell: "shell-sort",
 };
 const appBase = import.meta.env.BASE_URL;
 const homePath = () => appBase;
@@ -73,10 +82,13 @@ const algorithms: Record<
       "    if low >= high:",
       "        return",
       "    pivot = a[high]",
+      "    p = low",
       "    for j in range(low, high):",
       "        if a[j] < pivot:",
-      "            swap(a, j, low)",
-      "    quick_sort(a, low, high - 1)",
+      "            swap(a, p, j); p += 1",
+      "    swap(a, p, high)",
+      "    quick_sort(a, low, p - 1)",
+      "    quick_sort(a, p + 1, high)",
     ],
   },
   counting: {
@@ -88,8 +100,87 @@ const algorithms: Record<
       "    count = [0] * (max(a) + 1)",
       "    for value in a:",
       "        count[value] += 1",
+      "    out = 0",
       "    for value, amount in enumerate(count):",
-      "        a.extend([value] * amount)",
+      "        for _ in range(amount):",
+      "            a[out] = value; out += 1",
+      "    return a",
+    ],
+  },
+  selection: {
+    en: "Selection Sort", zh: "选择排序", complexity: "O(n²)",
+    code: [
+      "def selection_sort(a):",
+      "    for i in range(len(a)): ",
+      "        smallest = i",
+      "        for j in range(i + 1, len(a)):",
+      "            if a[j] < a[smallest]:",
+      "                smallest = j",
+      "        a[i], a[smallest] = a[smallest], a[i]",
+      "    return a",
+    ],
+  },
+  merge: {
+    en: "Merge Sort", zh: "归并排序", complexity: "O(n log n)",
+    code: [
+      "def merge_sort(a):",
+      "    if len(a) <= 1:",
+      "        return a",
+      "    mid = len(a) // 2",
+      "    left = merge_sort(a[:mid])",
+      "    right = merge_sort(a[mid:])",
+      "    return merge(left, right)",
+    ],
+  },
+  heap: {
+    en: "Heap Sort", zh: "堆排序", complexity: "O(n log n)",
+    code: [
+      "def heap_sort(a):",
+      "    for end in range(len(a) - 1, 0, -1):",
+      "        heapify(a, end)",
+      "        a[0], a[end] = a[end], a[0]",
+      "    return a",
+    ],
+  },
+  radix: {
+    en: "Radix Sort", zh: "基数排序", complexity: "O(d·n)",
+    code: [
+      "def radix_sort(a):",
+      "    place = 1",
+      "    while place <= max(a):",
+      "        buckets = [[] for _ in range(10)]",
+      "        for value in a:",
+      "            buckets[value // place % 10].append(value)",
+      "        a = [v for bucket in buckets for v in bucket]",
+      "        place *= 10",
+      "    return a",
+    ],
+  },
+  bucket: {
+    en: "Bucket Sort", zh: "桶排序", complexity: "O(n + k)",
+    code: [
+      "def bucket_sort(a):",
+      "    buckets = [[] for _ in range(10)]",
+      "    for value in a:",
+      "        buckets[value // 10].append(value)",
+      "    for bucket in buckets:",
+      "        bucket.sort()",
+      "    return [v for bucket in buckets for v in bucket]",
+    ],
+  },
+  shell: {
+    en: "Shell Sort", zh: "希尔排序", complexity: "O(n log²n)",
+    code: [
+      "def shell_sort(a):",
+      "    gap = len(a) // 2",
+      "    while gap > 0:",
+      "        for i in range(gap, len(a)):",
+      "            key = a[i]",
+      "            j = i",
+      "            while j >= gap and a[j - gap] > key:",
+      "                a[j] = a[j - gap]; j -= gap",
+      "            a[j] = key",
+      "        gap //= 2",
       "    return a",
     ],
   },
@@ -205,7 +296,8 @@ const snap = (
   op: Op,
   line: number,
   note: string,
-): Step => ({ values: [...values], ids: [...ids], active, op, line, note });
+  aux?: number[],
+): Step => ({ values: [...values], ids: [...ids], active, op, line, note, aux: aux ? [...aux] : undefined });
 function trace(input: number[], algorithm: Algorithm): Step[] {
   const a = [...input],
     ids = input.map((_, i) => String(i)),
@@ -270,6 +362,60 @@ function trace(input: number[], algorithm: Algorithm): Step[] {
         snap(a, ids, [j + 1], "place", 7, `Place ${key} in the open position.`),
       );
     }
+  if (algorithm === "selection")
+    for (let i = 0; i < a.length; i++) {
+      let smallest = i;
+      for (let j = i + 1; j < a.length; j++) {
+        s.push(snap(a, ids, [j, smallest], "compare", 5, `Compare ${a[j]} with the current minimum.`));
+        if (a[j] < a[smallest]) smallest = j;
+      }
+      if (smallest !== i) {
+        [a[i], a[smallest]] = [a[smallest], a[i]];
+        [ids[i], ids[smallest]] = [ids[smallest], ids[i]];
+        s.push(snap(a, ids, [i, smallest], "swap", 7, "Place the smallest value at the front."));
+      }
+    }
+  if (algorithm === "merge") {
+    const mergeSort = (lo: number, hi: number) => {
+      if (hi - lo <= 1) return;
+      const mid = Math.floor((lo + hi) / 2);
+      mergeSort(lo, mid);
+      mergeSort(mid, hi);
+      const left = a.slice(lo, mid), right = a.slice(mid, hi);
+      const leftIds = ids.slice(lo, mid), rightIds = ids.slice(mid, hi);
+      let i = 0, j = 0, write = lo;
+      while (i < left.length || j < right.length) {
+        const leftIndex = lo + i, rightIndex = mid + j;
+        if (i < left.length && j < right.length)
+          s.push(snap(a, ids, [leftIndex, rightIndex], "compare", 7, "Compare the two sorted halves."));
+        if (j >= right.length || (i < left.length && left[i] <= right[j])) {
+          a[write] = left[i]; ids[write] = leftIds[i++];
+        } else {
+          a[write] = right[j]; ids[write] = rightIds[j++];
+        }
+        s.push(snap(a, ids, [write], "place", 7, "Write the next smallest value."));
+        write++;
+      }
+    };
+    mergeSort(0, a.length);
+  }
+  if (algorithm === "heap") {
+    const heapify = (size: number, root: number) => {
+      let largest = root, left = root * 2 + 1, right = left + 1;
+      if (left < size) { s.push(snap(a, ids, [root, left], "compare", 3, "Compare the root with its left child.")); if (a[left] > a[largest]) largest = left; }
+      if (right < size) { s.push(snap(a, ids, [largest, right], "compare", 3, "Compare the largest candidate with its right child.")); if (a[right] > a[largest]) largest = right; }
+      if (largest !== root) {
+        [a[root], a[largest]] = [a[largest], a[root]]; [ids[root], ids[largest]] = [ids[largest], ids[root]];
+        s.push(snap(a, ids, [root, largest], "swap", 4, "Restore the heap property.")); heapify(size, largest);
+      }
+    };
+    for (let i = Math.floor(a.length / 2) - 1; i >= 0; i--) heapify(a.length, i);
+    for (let end = a.length - 1; end > 0; end--) {
+      [a[0], a[end]] = [a[end], a[0]]; [ids[0], ids[end]] = [ids[end], ids[0]];
+      s.push(snap(a, ids, [0, end], "swap", 4, "Move the maximum value to the sorted suffix."));
+      heapify(end, 0);
+    }
+  }
   if (algorithm === "quick") {
     const sort = (lo: number, hi: number) => {
       if (lo >= hi) return;
@@ -317,6 +463,7 @@ function trace(input: number[], algorithm: Algorithm): Step[] {
           "compare",
           2,
           `Count ${v}; its bucket now has ${count[v]}.`,
+          count,
         ),
       );
     });
@@ -325,11 +472,38 @@ function trace(input: number[], algorithm: Algorithm): Step[] {
       for (let i = 0; i < n; i++) {
         a[out] = v;
         s.push(
-          snap(a, ids, [out], "place", 4, `Write ${v} from its count bucket.`),
+          snap(a, ids, [out], "place", 4, `Write ${v} from its count bucket.`, count),
         );
         out++;
       }
     });
+  }
+  if (algorithm === "radix") {
+    const highest = Math.max(...a, 0);
+    for (let place = 1; Math.floor(highest / place) > 0; place *= 10) {
+      const buckets = Array.from({ length: 10 }, () => [] as { value: number; id: string }[]);
+      a.forEach((value, i) => { const digit = Math.floor(value / place) % 10; buckets[digit].push({ value, id: ids[i] }); s.push(snap(a, ids, [i], "compare", 5, `Place ${value} into digit bucket ${digit}.`)); });
+      let write = 0;
+      for (const bucket of buckets) for (const item of bucket) { a[write] = item.value; ids[write] = item.id; s.push(snap(a, ids, [write], "place", 7, "Collect values from the digit buckets.")); write++; }
+    }
+  }
+  if (algorithm === "bucket") {
+    const buckets = Array.from({ length: 10 }, () => [] as { value: number; id: string }[]);
+    a.forEach((value, i) => { const bucket = Math.min(9, Math.floor(value / 10)); buckets[bucket].push({ value, id: ids[i] }); s.push(snap(a, ids, [i], "place", 4, `Place ${value} into bucket ${bucket}.`)); });
+    let write = 0;
+    for (const bucket of buckets) { bucket.sort((x, y) => x.value - y.value); for (const item of bucket) { a[write] = item.value; ids[write] = item.id; s.push(snap(a, ids, [write], "place", 6, "Collect the sorted bucket.")); write++; } }
+  }
+  if (algorithm === "shell") {
+    for (let gap = Math.floor(a.length / 2); gap > 0; gap = Math.floor(gap / 2))
+      for (let i = gap; i < a.length; i++) {
+        let j = i;
+        while (j >= gap) {
+          s.push(snap(a, ids, [j - gap, j], "compare", 7, "Compare values separated by the current gap."));
+          if (a[j - gap] <= a[j]) break;
+          [a[j - gap], a[j]] = [a[j], a[j - gap]]; [ids[j - gap], ids[j]] = [ids[j], ids[j - gap]];
+          s.push(snap(a, ids, [j - gap, j], "shift", 9, "Shift the larger gapped value right.")); j -= gap;
+        }
+      }
   }
   s.push(snap(a, ids, [], "complete", 0, "The array is sorted."));
   return s;
@@ -351,6 +525,7 @@ export default function App() {
     [playing, setPlaying] = useState(false),
     [speed, setSpeed] = useState(700),
     [viewMode, setViewMode] = useState<"bars" | "array">("bars"),
+    [theme, setTheme] = useState<"dark" | "light">("dark"),
     [leaving, setLeaving] = useState(false),
     [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = (next: "home" | "lab", selectedAlgorithm = algorithm) => {
@@ -365,6 +540,9 @@ export default function App() {
       setLeaving(false);
     }, 180);
   };
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
   useEffect(() => {
     const onPopState = () => {
       const nextView = isHomePath(window.location.pathname) ? "home" : "lab";
@@ -384,7 +562,7 @@ export default function App() {
       values.length > 0 &&
       values.length <= 20 &&
       values.every(Number.isInteger) &&
-      (algorithm !== "counting" || values.every((v) => v >= 0)),
+      (!(algorithm === "counting" || algorithm === "radix" || algorithm === "bucket") || values.every((v) => v >= 0)),
     steps = useMemo(
       () => (valid ? trace(values, algorithm) : []),
       [input, algorithm, valid],
@@ -433,6 +611,13 @@ export default function App() {
       </nav>
       <div className="header-actions">
         <button
+          className="theme-toggle"
+          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        >
+          {theme === "dark" ? "☼" : "☾"}
+        </button>
+        <button
           className="language"
           onClick={() => setLang(lang === "en" ? "zh" : "en")}
         >
@@ -470,7 +655,7 @@ export default function App() {
   );
   if (view === "home")
     return (
-      <main className={`home-page ${leaving ? "page-leaving" : "page-enter"}`}>
+        <main className={`home-page ${leaving ? "page-leaving" : "page-enter"}`}>
         {header}
         <section className="home-hero">
           <div>
@@ -595,6 +780,17 @@ export default function App() {
               ))}
             </div>
           )}
+          {algorithm === "counting" && step?.aux && (
+            <div className="counting-buckets" aria-label="Counting sort frequency buckets">
+              <span className="bucket-label">count</span>
+              {step.aux.map((amount, value) => (
+                <div className="bucket" key={value}>
+                  <b>{amount}</b>
+                  <small>{value}</small>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="legend">
             <span>
               <i className="amber" />
@@ -711,7 +907,7 @@ export default function App() {
                   draftValues.length > 0 &&
                   draftValues.length <= 20 &&
                   draftValues.every(Number.isInteger) &&
-                  (algorithm !== "counting" || draftValues.every((v) => v >= 0));
+                  (!(algorithm === "counting" || algorithm === "radix" || algorithm === "bucket") || draftValues.every((v) => v >= 0));
                 if (draftValid) {
                   setInput(draftInput);
                   setDraftInput("");

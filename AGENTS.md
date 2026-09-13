@@ -66,6 +66,7 @@ scripts/        verification entry points
 - Run available verification before handoff.
 - Do not commit without human approval.
 - After the user approves a change or asks to commit, commit the relevant verified change set and push it to the current remote branch unless the user explicitly says not to push.
+- After a verified implementation is ready, push the committed change to the current remote branch when the user has already authorized automatic pushing for this project.
 
 ## Before Implementation
 
